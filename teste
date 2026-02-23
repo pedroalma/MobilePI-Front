@@ -1,0 +1,162 @@
+// styles permanecem iguais (não alterei)
+const styles = StyleSheet.create({
+screen: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#14532d',
+  },
+  errorContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#dc2626',
+    fontWeight: 'bold',
+  },
+  errorDetail: {
+    fontSize: 14,
+    color: '#7f1d1d',
+    marginTop: 5,
+  },
+  errorHint: {
+    fontSize: 12,
+    color: '#991b1b',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 15,
+    backgroundColor: '#14532d',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  viewContImg: { 
+    width: '90%', 
+    alignItems: 'center', 
+    marginVertical: 10 
+  },
+  img: { 
+    width: 220, 
+    height: 80, 
+    resizeMode: 'contain', 
+    alignSelf: 'center', 
+    marginTop: 10 
+  },
+  card: { 
+    width: '90%', 
+    backgroundColor: '#0d9488', 
+    borderRadius: 10, 
+    padding: 10, 
+    elevation: 4 
+  },
+  cardTitle: { 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    marginBottom: 5, 
+    textAlign: 'center' 
+  },
+  barChart: { 
+    height: 250 
+  },
+  row: { 
+    width: '110%', 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginTop: 15, 
+    paddingLeft:170
+  },
+  smallCard: { 
+    width: '48%', 
+    backgroundColor: '#0d9488', 
+    borderRadius: 10, 
+    alignItems: 'center', 
+    paddingVertical: 10, 
+    elevation: 4, 
+    height: 250, 
+    justifyContent: 'center' 
+  },
+  pieChart: { 
+    width: 150, 
+    height: 150 
+  },
+  smallTitle: { 
+    color: '#fff', 
+    fontSize: 14, 
+    marginTop: 5 
+  },
+  dotRow: { 
+    flexDirection: 'row', 
+    marginTop: 5 
+  },
+  dot: { 
+    width: 20, 
+    height: 20, 
+    borderRadius: 10, 
+    marginHorizontal: 4 
+  },
+  largeCard: { 
+    width: '90%', 
+    flexDirection: 'row', 
+    borderRadius: 10, 
+    overflow: 'hidden', 
+    marginTop: 20, 
+    elevation: 4 
+  },
+  halfCardLeft: { 
+    flex: 1, 
+    backgroundColor: '#14532d', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 15, 
+    height: 200 
+  },
+  halfCardRight: { 
+    flex: 1, 
+    backgroundColor: '#0d9488', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 15 
+  },
+  label: { 
+    color: '#fff', 
+    fontSize: 14, 
+    marginBottom: 5 
+  },
+  bigNumber: { 
+    color: '#fff', 
+    fontSize: 28, 
+    fontWeight: 'bold' 
+  },
+  button: { 
+    width: '90%', 
+    backgroundColor: '#14532d', 
+    paddingVertical: 14, 
+    borderRadius: 8, 
+    alignItems: 'center', 
+    marginTop: 20,
+    marginBottom: 20
+  },
+  buttonText: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: 'bold' 
+  },
+});
