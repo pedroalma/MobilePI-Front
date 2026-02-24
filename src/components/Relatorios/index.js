@@ -13,8 +13,8 @@ import { useFocusEffect, useRoute, useNavigation } from "@react-navigation/nativ
 import Orientation from "react-native-orientation-locker";
 import RNHTMLtoPDF from "react-native-html-to-pdf";
 import FileViewer from "react-native-file-viewer";
-import moment from 'moment-timezone';
-import axios from 'axios';
+import moment from "moment-timezone";
+import axios from "axios";
 
 export default function Relatorios() {
   const route = useRoute();
@@ -24,34 +24,24 @@ export default function Relatorios() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [editData, setEditData] = useState([]);
 
-  const widthArr = [100, 110, 100, 110, 130, 110, 150];
+  // Larguras ajustadas para 8 colunas visíveis + ações
+  const widthArr = [90, 100, 90, 100, 160, 100, 100, 140];
 
-  const API_URL = 'http://192.168.0.106:3000/api/produtos';
+  const API_URL = "http://192.168.192.1:3000/api/produtos";
 
   const getTurno = () => {
-    const agora = moment().tz('America/Sao_Paulo');
+    const agora = moment().tz("America/Sao_Paulo");
     const hora = agora.hours();
     const minutos = agora.minutes();
-    const minutosTotais = hora * 60 + minutos;
+    const total = hora * 60 + minutos;
 
-    if (minutosTotais >= 8 * 60 && minutosTotais < 12 * 60) return "Manhã";
-    if (minutosTotais >= 12 * 60 && minutosTotais < 16 * 60) return "Tarde";
-    if (minutosTotais >= 16 * 60 && minutosTotais < 19 * 60) return "Noite";
+    if (total >= 8 * 60 && total < 12 * 60) return "Manhã";
+    if (total >= 12 * 60 && total < 16 * 60) return "Tarde";
+    if (total >= 16 * 60 && total < 19 * 60) return "Noite";
     return "Fora do horário";
   };
 
-  useEffect(() => {
-    if (tableData.length > 0) {
-      const turnoCorreto = getTurno();
-      setTableData(prev =>
-        prev.map(row => {
-          const novaRow = [...row];
-          novaRow[5] = turnoCorreto;
-          return novaRow;
-        })
-      );
-    }
-  }, []);
+  const turnoAtual = getTurno();
 
   const formatarData = (data) => {
     if (!data) return new Date().toLocaleDateString("pt-BR");
@@ -62,8 +52,6 @@ export default function Relatorios() {
     return data;
   };
 
-  const turnoAtual = getTurno();
-
   useFocusEffect(
     useCallback(() => {
       Orientation.lockToLandscape();
@@ -71,17 +59,15 @@ export default function Relatorios() {
       if (route.params?.novoItem) {
         const item = route.params.novoItem;
 
-        console.log("[DEBUG] Novo item recebido:", JSON.stringify(item, null, 2));
-        console.log("[DEBUG] ID recebido:", item.id || item._id || "SEM ID");
-
         const novaLinha = [
           item.nomeProduto || "—",
           `${item.quantidadePorUnidade || 0} ${item.unidade || "kg"}`,
           item.quantidadeDePacotes || 0,
           item.validade || "—",
+          item.descricao || "—",
           formatarData(item.dataRecebimento || item.dataReceb),
           turnoAtual,
-          item.id || item._id || "", // ID no índice 6
+          item.id || item._id || "", // ID no índice 7
         ];
 
         setTableData((prev) => [...prev, novaLinha]);
@@ -96,7 +82,7 @@ export default function Relatorios() {
 
   const startEditing = (i) => {
     setEditingIndex(i);
-    setEditData([...tableData[i]]);
+    setEditData([...tableData[i]]); // Copia TODA a linha, incluindo ID no final
   };
 
   const cancelEditing = () => {
@@ -107,28 +93,35 @@ export default function Relatorios() {
   const handleSaveEdit = async () => {
     if (editingIndex === null) return;
 
-    const editedRow = editData;
-    const id = editedRow[6];
+    // Pega o ID da linha ORIGINAL (não alterada pela edição)
+    const id = tableData[editingIndex][7];
 
     if (!id) {
       Alert.alert("Erro", "ID do produto não encontrado.");
       return;
     }
 
+    const editedRow = editData;
+
     const updatedData = {
-      nomeProduto: editedRow[0],
-      quantidadePorUnidade: parseFloat(editedRow[1].split(" ")[0]) || 0,
-      unidade: editedRow[1].split(" ")[1] || "kg",
-      quantidadeDePacotes: Number(editedRow[2]),
-      validade: editedRow[3],
-      dataRecebimento: editedRow[4],
+      nomeProduto: editedRow[0] || "",
+      quantidadePorUnidade: parseFloat(editedRow[1]?.split(" ")[0] || "0") || 0,
+      unidade: editedRow[1]?.split(" ")[1] || "kg",
+      quantidadeDePacotes: Number(editedRow[2]) || 0,
+      validade: editedRow[3] || "",
+      descricao: editedRow[4] || "",
+      dataRecebimento: editedRow[5] || "",
     };
 
     try {
-      console.log("[PUT] Atualizando ID:", id, "Dados:", updatedData);
-      await axios.put(`${API_URL}/${id}`, updatedData);
+      console.log("[PUT] Enviando para ID:", id);
+      console.log("[PUT] Dados:", updatedData);
 
-      setTableData(prev => {
+      const response = await axios.put(`${API_URL}/${id}`, updatedData);
+      console.log("[PUT] Sucesso - Status:", response.status);
+
+      // Atualiza a tabela com os valores editados (mantém ID)
+      setTableData((prev) => {
         const novaTabela = [...prev];
         novaTabela[editingIndex] = [...editedRow];
         return novaTabela;
@@ -136,8 +129,8 @@ export default function Relatorios() {
 
       Alert.alert("Sucesso", "Item atualizado!");
     } catch (error) {
-      console.error("[PUT ERRO]:", error.response?.data || error.message);
-      Alert.alert("Erro", "Falha ao atualizar.");
+      console.error("[PUT] Erro:", error?.response?.data || error.message);
+      Alert.alert("Erro", "Falha ao atualizar. Verifique o console.");
     }
 
     setEditingIndex(null);
@@ -145,39 +138,32 @@ export default function Relatorios() {
   };
 
   const handleDelete = (index) => {
-    Alert.alert(
-      "Excluir",
-      "Tem certeza?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Excluir",
-          style: "destructive",
-          onPress: async () => {
-            const id = tableData[index][6];
+    Alert.alert("Excluir", "Tem certeza?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: async () => {
+          const id = tableData[index][7];
 
-            if (!id) {
-              Alert.alert("Erro", "ID não encontrado.");
-              return;
-            }
+          if (!id) return Alert.alert("Erro", "ID não encontrado.");
 
-            try {
-              await axios.delete(`${API_URL}/${id}`);
-
-              setTableData(prev => prev.filter((_, i) => i !== index));
-              Alert.alert("Sucesso", "Item excluído!");
-            } catch (error) {
-              console.error("Erro DELETE:", error.response?.data || error.message);
-              Alert.alert("Erro", "Falha ao excluir.");
-            }
+          try {
+            await axios.delete(`${API_URL}/${id}`);
+            setTableData((prev) => prev.filter((_, i) => i !== index));
+            Alert.alert("Sucesso", "Item excluído!");
+          } catch (error) {
+            console.error("[DELETE] Erro:", error?.response?.data || error.message);
+            Alert.alert("Erro", "Falha ao excluir.");
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
 
   const gerarPDF = async () => {
-    if (tableData.length === 0) return Alert.alert("Erro", "Sem dados.");
+    if (tableData.length === 0)
+      return Alert.alert("Erro", "Sem dados para gerar PDF.");
 
     const htmlContent = `
       <html>
@@ -185,20 +171,41 @@ export default function Relatorios() {
           <h1>Relatório de Doações</h1>
           <table border="1" style="width:100%; border-collapse:collapse;">
             <tr>
-              <th>Produto</th><th>Peso</th><th>Quantidade</th><th>Validade</th><th>Recebimento</th><th>Turno</th>
+              <th>Produto</th>
+              <th>Peso</th>
+              <th>Quantidade</th>
+              <th>Validade</th>
+              <th>Descrição</th>
+              <th>Recebimento</th>
+              <th>Turno</th>
             </tr>
-            ${tableData.map(row => `
+            ${tableData
+              .map(
+                (row) => `
               <tr>
-                <td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td>
+                <td>${row[0]}</td>
+                <td>${row[1]}</td>
+                <td>${row[2]}</td>
+                <td>${row[3]}</td>
+                <td>${row[4]}</td>
+                <td>${row[5]}</td>
+                <td>${row[6]}</td>
               </tr>
-            `).join("")}
+            `
+              )
+              .join("")}
           </table>
         </body>
       </html>
     `;
 
     try {
-      const file = await RNHTMLtoPDF.convert({ html: htmlContent, fileName: "Relatorio", directory: "Documents" });
+      const file = await RNHTMLtoPDF.convert({
+        html: htmlContent,
+        fileName: "Relatorio",
+        directory: "Documents",
+      });
+
       await FileViewer.open(file.filePath);
     } catch (error) {
       Alert.alert("Erro PDF", error.message);
@@ -212,69 +219,90 @@ export default function Relatorios() {
           <View>
             <Table borderStyle={{ borderWidth: 1 }}>
               <Row
-                data={["Produto", "Peso", "Quantidade", "Validade", "Recebimento", "Turno", "Ações"]}
+                data={[
+                  "Produto",
+                  "Peso",
+                  "Quantidade",
+                  "Validade",
+                  "Descrição",
+                  "Recebimento",
+                  "Turno",
+                  "Ações",
+                ]}
                 widthArr={widthArr}
                 style={styles.head}
-                textStyle={[styles.textHead, { padding: 0, margin: 0 }]}
+                textStyle={styles.textHead}
               />
             </Table>
 
             <ScrollView style={{ marginTop: -1 }}>
               <Table borderStyle={{ borderWidth: 1 }}>
-                {tableData.map((row, index) => (
-                  <Row
-                    key={index}
-                    widthArr={widthArr}
-                    style={styles.row}
-                    textStyle={[styles.text, { padding: 0, margin: 0 }]}
-                    data={
-                      editingIndex === index
-                        ? [
-                            ...editData.map((cell, i) =>
-                              i === 5 ? (
-                                <Text key={i} style={{ padding: 0, margin: 0 }}>
-                                  {cell}
-                                </Text>
-                              ) : (
+                {tableData.map((row, index) => {
+                  const isEditing = editingIndex === index;
+
+                  return (
+                    <Row
+                      key={index}
+                      widthArr={widthArr}
+                      style={styles.row}
+                      textStyle={styles.text}
+                      data={
+                        isEditing
+                          ? [
+                              ...editData.slice(0, 6).map((cell, i) => (
                                 <TextInput
                                   key={i}
-                                  style={[styles.input, { padding: 0, margin: 0 }]}
-                                  value={String(cell)}
+                                  style={styles.input}
+                                  value={String(cell ?? "")}
                                   onChangeText={(t) => {
                                     const d = [...editData];
                                     d[i] = t;
                                     setEditData(d);
                                   }}
+                                  keyboardType={
+                                    i === 1 || i === 2 ? "numeric" : "default"
+                                  }
                                 />
-                              )
-                            ),
-                            <View style={styles.buttonContainer}>
-                              <TouchableOpacity onPress={handleSaveEdit} style={styles.btnSalvar}>
-                                <Text style={styles.btnText}>✔</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity onPress={cancelEditing} style={styles.btnCancelar}>
-                                <Text style={styles.btnText}>✖</Text>
-                              </TouchableOpacity>
-                            </View>,
-                          ]
-                        : [
-                            ...row.map((cell, i) => (
-                              <Text key={i} style={{ padding: 0, margin: 0, textAlign: "center" }}>
-                                {String(cell)}
-                              </Text>
-                            )),
-                            <View style={styles.buttonContainer}>
-                              <TouchableOpacity onPress={() => startEditing(index)} style={styles.btnEditar}>
-                                <Text style={styles.btnText}>Editar</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity onPress={() => handleDelete(index)} style={styles.btnExcluir}>
-                                <Text style={styles.btnText}>Excluir</Text>
-                              </TouchableOpacity>
-                            </View>,
-                          ]
-                    }
-                  />
-                ))}
+                              )),
+                              <Text style={{ textAlign: "center", color: "#555", padding: 6 }}>
+                                {editData[6]} {/* Turno fixo */}
+                              </Text>,
+                              <View style={styles.buttonContainer}>
+                                <TouchableOpacity
+                                  onPress={handleSaveEdit}
+                                  style={styles.btnSalvar}
+                                >
+                                  <Text style={styles.btnText}>Salvar</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={cancelEditing}
+                                  style={styles.btnCancelar}
+                                >
+                                  <Text style={styles.btnText}>Cancelar</Text>
+                                </TouchableOpacity>
+                              </View>,
+                            ]
+                          : [
+                              ...row.slice(0, 7).map((cell) => String(cell)),
+                              <View style={styles.buttonContainer}>
+                                <TouchableOpacity
+                                  onPress={() => startEditing(index)}
+                                  style={styles.btnEditar}
+                                >
+                                  <Text style={styles.btnText}>Editar</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() => handleDelete(index)}
+                                  style={styles.btnExcluir}
+                                >
+                                  <Text style={styles.btnText}>Excluir</Text>
+                                </TouchableOpacity>
+                              </View>,
+                            ]
+                      }
+                    />
+                  );
+                })}
               </Table>
             </ScrollView>
           </View>
@@ -291,80 +319,52 @@ export default function Relatorios() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#fff" },
   head: { height: 50, backgroundColor: "#c1f0c1" },
-  textHead: { 
-    textAlign: "center", 
-    fontWeight: "bold",
-    fontSize: 13,
-    padding: 0,
-    margin: 0,
-  },
-  row: { 
-    minHeight: 45, 
-    backgroundColor: "#fff",
-    padding: 0,
-  },
-  text: { 
-    textAlign: "center", 
-    margin: 0,
-    padding: 0,
+  textHead: { textAlign: "center", fontWeight: "bold", fontSize: 13 },
+  row: { minHeight: 45, backgroundColor: "#fff" },
+  text: { textAlign: "center", margin: 6, fontSize: 13 },
+  input: {
+    borderWidth: 1,
+    borderColor: "#007bff",
+    width: "95%",
+    textAlign: "center",
+    height: 35,
     fontSize: 13,
   },
-  input: { 
-    borderWidth: 1, 
-    borderColor: "#007bff", 
-    width: "100%", 
-    textAlign: "center", 
-    height: 40,
-    padding: 0,
-    margin: 0,
-    fontSize: 13,
-  },
-  buttonContainer: { 
-    flexDirection: "row", 
+  buttonContainer: {
+    flexDirection: "row",
     justifyContent: "center",
-    padding: 0,
-    margin: 0,
+    alignItems: "center",
+    padding: 4,
   },
-  btnEditar: { 
-    backgroundColor: "#007bff", 
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    marginRight: 4,
-    borderRadius: 4,
-  },
-  btnExcluir: { 
-    backgroundColor: "#dc3545", 
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-  },
-  btnSalvar: { 
-    backgroundColor: "#28a745", 
+  btnEditar: {
+    backgroundColor: "#007bff",
     padding: 6,
-    marginRight: 4,
+    marginRight: 6,
     borderRadius: 4,
   },
-  btnCancelar: { 
-    backgroundColor: "#dc3545", 
+  btnExcluir: {
+    backgroundColor: "#dc3545",
     padding: 6,
     borderRadius: 4,
   },
-  btnText: { 
-    color: "#fff", 
-    fontSize: 12,
-    padding: 0,
-    margin: 0,
+  btnSalvar: {
+    backgroundColor: "#28a745",
+    padding: 8,
+    marginRight: 8,
+    borderRadius: 6,
   },
-  pdfButton: { 
-    marginTop: 15, 
-    backgroundColor: "#215727", 
-    padding: 15, 
-    borderRadius: 10, 
-    alignItems: "center" 
+  btnCancelar: {
+    backgroundColor: "#dc3545",
+    padding: 8,
+    borderRadius: 6,
   },
-  pdfText: { 
-    color: "#fff", 
-    fontSize: 18, 
-    fontWeight: "bold" 
+  btnText: { color: "#fff", fontSize: 13, fontWeight: "bold" },
+  pdfButton: {
+    marginTop: 15,
+    backgroundColor: "#215727",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
   },
+  pdfText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
 });
