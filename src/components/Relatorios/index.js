@@ -26,7 +26,7 @@ export default function Relatorios() {
 
   const widthArr = [100, 110, 100, 110, 130, 110, 150];
 
-  const API_URL = 'http://172.28.176.1:3000/api/produtos';
+  const API_URL = 'http://192.168.0.106:3000/api/produtos';
 
   const getTurno = () => {
     const agora = moment().tz('America/Sao_Paulo');
@@ -64,36 +64,35 @@ export default function Relatorios() {
 
   const turnoAtual = getTurno();
 
-useFocusEffect(
-  useCallback(() => {
-    Orientation.lockToLandscape();
+  useFocusEffect(
+    useCallback(() => {
+      Orientation.lockToLandscape();
 
-    if (route.params?.novoItem) {
-      const item = route.params.novoItem;
+      if (route.params?.novoItem) {
+        const item = route.params.novoItem;
 
-      // ← COLOQUE AQUI OS DOIS LOGS
-      console.log("[DEBUG] Novo item recebido:", JSON.stringify(item, null, 2));
-      console.log("[DEBUG] ID recebido:", item.id || item._id || "SEM ID");
+        console.log("[DEBUG] Novo item recebido:", JSON.stringify(item, null, 2));
+        console.log("[DEBUG] ID recebido:", item.id || item._id || "SEM ID");
 
-      const novaLinha = [
-        item.nomeProduto || "—",
-        `${item.quantidadePorUnidade || 0} ${item.unidade || "kg"}`,
-        item.quantidadeDePacotes || 0,
-        item.validade || "—",
-        formatarData(item.dataRecebimento || item.dataReceb),
-        turnoAtual,
-        item.id || item._id || "", // ID no índice 6
-      ];
+        const novaLinha = [
+          item.nomeProduto || "—",
+          `${item.quantidadePorUnidade || 0} ${item.unidade || "kg"}`,
+          item.quantidadeDePacotes || 0,
+          item.validade || "—",
+          formatarData(item.dataRecebimento || item.dataReceb),
+          turnoAtual,
+          item.id || item._id || "", // ID no índice 6
+        ];
 
-      setTableData((prev) => [...prev, novaLinha]);
-      navigation.setParams({ novoItem: null });
-    }
+        setTableData((prev) => [...prev, novaLinha]);
+        navigation.setParams({ novoItem: null });
+      }
 
-    return () => {
-      Orientation.lockToPortrait();
-    };
-  }, [route.params, navigation, turnoAtual])
-);
+      return () => {
+        Orientation.lockToPortrait();
+      };
+    }, [route.params, navigation, turnoAtual])
+  );
 
   const startEditing = (i) => {
     setEditingIndex(i);
@@ -105,46 +104,45 @@ useFocusEffect(
     setEditData([]);
   };
 
-const handleSaveEdit = async () => {
-  if (editingIndex === null) return;
+  const handleSaveEdit = async () => {
+    if (editingIndex === null) return;
 
-  const editedRow = editData;
-  const id = editedRow[6]; // ID no índice 6
+    const editedRow = editData;
+    const id = editedRow[6];
 
-  if (!id) {
-    Alert.alert("Erro", "ID do produto não encontrado.");
-    return;
-  }
+    if (!id) {
+      Alert.alert("Erro", "ID do produto não encontrado.");
+      return;
+    }
 
-  const updatedData = {
-    nomeProduto: editedRow[0],
-    quantidadePorUnidade: parseFloat(editedRow[1].split(" ")[0]) || 0,
-    unidade: editedRow[1].split(" ")[1] || "kg",
-    quantidadeDePacotes: Number(editedRow[2]),
-    validade: editedRow[3],
-    dataRecebimento: editedRow[4],
+    const updatedData = {
+      nomeProduto: editedRow[0],
+      quantidadePorUnidade: parseFloat(editedRow[1].split(" ")[0]) || 0,
+      unidade: editedRow[1].split(" ")[1] || "kg",
+      quantidadeDePacotes: Number(editedRow[2]),
+      validade: editedRow[3],
+      dataRecebimento: editedRow[4],
+    };
+
+    try {
+      console.log("[PUT] Atualizando ID:", id, "Dados:", updatedData);
+      await axios.put(`${API_URL}/${id}`, updatedData);
+
+      setTableData(prev => {
+        const novaTabela = [...prev];
+        novaTabela[editingIndex] = [...editedRow];
+        return novaTabela;
+      });
+
+      Alert.alert("Sucesso", "Item atualizado!");
+    } catch (error) {
+      console.error("[PUT ERRO]:", error.response?.data || error.message);
+      Alert.alert("Erro", "Falha ao atualizar.");
+    }
+
+    setEditingIndex(null);
+    setEditData([]);
   };
-
-  try {
-    console.log("[PUT] Atualizando ID:", id, "Dados:", updatedData);
-    await axios.put(`${API_URL}/${id}`, updatedData);  // ← mudou de patch para put
-
-    // Atualiza localmente
-    setTableData(prev => {
-      const novaTabela = [...prev];
-      novaTabela[editingIndex] = [...editedRow];
-      return novaTabela;
-    });
-
-    Alert.alert("Sucesso", "Item atualizado!");
-  } catch (error) {
-    console.error("[PUT ERRO]:", error.response?.data || error.message);
-    Alert.alert("Erro", "Falha ao atualizar.");
-  }
-
-  setEditingIndex(null);
-  setEditData([]);
-};
 
   const handleDelete = (index) => {
     Alert.alert(
@@ -217,7 +215,7 @@ const handleSaveEdit = async () => {
                 data={["Produto", "Peso", "Quantidade", "Validade", "Recebimento", "Turno", "Ações"]}
                 widthArr={widthArr}
                 style={styles.head}
-                textStyle={styles.textHead}
+                textStyle={[styles.textHead, { padding: 0, margin: 0 }]}
               />
             </Table>
 
@@ -228,17 +226,21 @@ const handleSaveEdit = async () => {
                     key={index}
                     widthArr={widthArr}
                     style={styles.row}
-                    textStyle={styles.text}
+                    textStyle={[styles.text, { padding: 0, margin: 0 }]}
                     data={
                       editingIndex === index
                         ? [
                             ...editData.map((cell, i) =>
-                              i === 5 ? <Text key={i}>{cell}</Text> : (
+                              i === 5 ? (
+                                <Text key={i} style={{ padding: 0, margin: 0 }}>
+                                  {cell}
+                                </Text>
+                              ) : (
                                 <TextInput
                                   key={i}
-                                  style={styles.input}
+                                  style={[styles.input, { padding: 0, margin: 0 }]}
                                   value={String(cell)}
-                                  onChangeText={t => {
+                                  onChangeText={(t) => {
                                     const d = [...editData];
                                     d[i] = t;
                                     setEditData(d);
@@ -256,7 +258,11 @@ const handleSaveEdit = async () => {
                             </View>,
                           ]
                         : [
-                            ...row.map((cell) => String(cell)),
+                            ...row.map((cell, i) => (
+                              <Text key={i} style={{ padding: 0, margin: 0, textAlign: "center" }}>
+                                {String(cell)}
+                              </Text>
+                            )),
                             <View style={styles.buttonContainer}>
                               <TouchableOpacity onPress={() => startEditing(index)} style={styles.btnEditar}>
                                 <Text style={styles.btnText}>Editar</Text>
@@ -285,16 +291,80 @@ const handleSaveEdit = async () => {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#fff" },
   head: { height: 50, backgroundColor: "#c1f0c1" },
-  textHead: { textAlign: "center", fontWeight: "bold" },
-  row: { minHeight: 45, backgroundColor: "#fff" },
-  text: { textAlign: "center", margin: 6 },
-  input: { borderWidth: 1, borderColor: "#007bff", width: "95%", textAlign: "center", height: 35 },
-  buttonContainer: { flexDirection: "row", justifyContent: "center" },
-  btnEditar: { backgroundColor: "#007bff", padding: 5, marginRight: 4 },
-  btnExcluir: { backgroundColor: "#dc3545", padding: 5 },
-  btnSalvar: { backgroundColor: "#28a745", padding: 5, marginRight: 4 },
-  btnCancelar: { backgroundColor: "#dc3545", padding: 5 },
-  btnText: { color: "#fff", fontSize: 12 },
-  pdfButton: { marginTop: 15, backgroundColor: "#215727", padding: 15, borderRadius: 10, alignItems: "center" },
-  pdfText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+  textHead: { 
+    textAlign: "center", 
+    fontWeight: "bold",
+    fontSize: 13,
+    padding: 0,
+    margin: 0,
+  },
+  row: { 
+    minHeight: 45, 
+    backgroundColor: "#fff",
+    padding: 0,
+  },
+  text: { 
+    textAlign: "center", 
+    margin: 0,
+    padding: 0,
+    fontSize: 13,
+  },
+  input: { 
+    borderWidth: 1, 
+    borderColor: "#007bff", 
+    width: "100%", 
+    textAlign: "center", 
+    height: 40,
+    padding: 0,
+    margin: 0,
+    fontSize: 13,
+  },
+  buttonContainer: { 
+    flexDirection: "row", 
+    justifyContent: "center",
+    padding: 0,
+    margin: 0,
+  },
+  btnEditar: { 
+    backgroundColor: "#007bff", 
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginRight: 4,
+    borderRadius: 4,
+  },
+  btnExcluir: { 
+    backgroundColor: "#dc3545", 
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+  },
+  btnSalvar: { 
+    backgroundColor: "#28a745", 
+    padding: 6,
+    marginRight: 4,
+    borderRadius: 4,
+  },
+  btnCancelar: { 
+    backgroundColor: "#dc3545", 
+    padding: 6,
+    borderRadius: 4,
+  },
+  btnText: { 
+    color: "#fff", 
+    fontSize: 12,
+    padding: 0,
+    margin: 0,
+  },
+  pdfButton: { 
+    marginTop: 15, 
+    backgroundColor: "#215727", 
+    padding: 15, 
+    borderRadius: 10, 
+    alignItems: "center" 
+  },
+  pdfText: { 
+    color: "#fff", 
+    fontSize: 18, 
+    fontWeight: "bold" 
+  },
 });
