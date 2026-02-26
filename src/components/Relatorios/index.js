@@ -27,7 +27,7 @@ export default function Relatorios() {
   // Larguras ajustadas para 8 colunas visíveis + ações
   const widthArr = [90, 100, 90, 100, 160, 100, 100, 140];
 
-  const API_URL = "http://192.168.192.1:3000/api/produtos";
+  const API_URL = "http://172.25.192.1:3000/api/produtos";
 
   const getTurno = () => {
     const agora = moment().tz("America/Sao_Paulo");
