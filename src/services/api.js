@@ -3,7 +3,7 @@ import axios from 'axios';
 const confirmar = async () => {
   try {
     await axios.post(
-      'http://172.23.176.1:3000/api/produtos',
+      'http://192.168.32.1:3000/api/produtos',
       dados
     );
 

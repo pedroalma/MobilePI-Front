@@ -17,28 +17,31 @@ import Relatorios from "../Relatorios/index"; // ajuste o caminho se necessário
 
 const Tab = createBottomTabNavigator();
 
-const API_URL = "http://172.25.192.1:3000/api/produtos";
+const API_URL = "http://192.168.32.1:3000/api/produtos"; // seu IP local
 
-const getTodayDate = () => {
-  const today = new Date();
-  const dd = String(today.getDate()).padStart(2, "0");
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const yyyy = today.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+// Função auxiliar para converter data "MM/AAAA" → "YYYY-MM-DD" (assume dia 01)
+const formatValidade = (val) => {
+  if (!val) return null;
+  const [mm, yyyy] = val.split('/');
+  if (!mm || !yyyy) return null;
+  return `${yyyy}-${mm.padStart(2, '0')}-01`;
 };
 
+// Data de hoje em ISO (YYYY-MM-DD)
+const getTodayISO = () => new Date().toISOString().split('T')[0];
+
 function Cadastro() {
-  const [nomeProduto, setNomeProduto] = useState(null);
+  const [descricao, setDescricao] = useState(null); // mudou de nomeProduto
   const [unidade, setUnidade] = useState("kg");
-  const [quantidadePorUnidade, setQuantidadePorUnidade] = useState("");
-  const [quantidadeDePacotes, setQuantidadeDePacotes] = useState("1");
+  const [quantidade, setQuantidade] = useState(""); // mudou de quantidadePorUnidade
+  const [peso, setPeso] = useState("1");            // novo campo (obrigatório)
   const [validade, setValidade] = useState("");
   const [dataReceb, setDataReceb] = useState("");
 
   const navigation = useNavigation();
 
   useEffect(() => {
-    setDataReceb(getTodayDate());
+    setDataReceb(getTodayISO());
   }, []);
 
   const handleChangeValidade = (text) => {
@@ -50,70 +53,69 @@ function Cadastro() {
   };
 
   const handleConfirm = async () => {
-    if (
-      !nomeProduto ||
-      !quantidadePorUnidade ||
-      !quantidadeDePacotes ||
-      !validade
-    ) {
-      Alert.alert("Atenção", "Preencha todos os campos obrigatórios!");
-      return;
-    }
+  if (!descricao || !quantidade || !peso || !validade) {
+    Alert.alert("Atenção", "Preencha todos os campos obrigatórios!");
+    return;
+  }
 
-    const novoItem = {
-      nomeProduto,
-      unidade,
-      quantidadePorUnidade: Number(quantidadePorUnidade),
-      quantidadeDePacotes: Number(quantidadeDePacotes),
-      validade,
-      dataRecebimento: dataReceb,
-    };
+  // Converte "MM/AAAA" para "YYYY-MM-DD" (assume dia 01)
+  const formatValidade = (val) => {
+    if (!val) return null;
+    const [mm, yyyy] = val.split('/');
+    if (!mm || !yyyy || mm.length !== 2 || yyyy.length !== 4) return null;
+    return `${yyyy}-${mm}-01`;
+  };
 
-    try {
-      const response = await axios.post(API_URL, novoItem, {
+  const novoItem = {
+  descricao: descricao.trim(),           // ex: "Arroz"
+  quantidade: Number(quantidade) || 0,
+  peso: Number(peso) || 1.000,
+  unidade: unidade.toLowerCase(),        // ex: "kg"
+  codBar: null,
+  dataDeEntrada: getTodayISO(),
+  dataDeValidade: formatValidade(validade), // ex: "2026-12-01"
+  dataLimiteDeSaida: null,
+  codUsu: 1,
+  codOri: 1,
+  codList: 1
+};
+
+  console.log("Dados enviados:", novoItem); // debug
+
+  try {
+    const response = await axios.post(API_URL, novoItem, {
       headers: { "Content-Type": "application/json" },
     });
 
-    console.log("Produto criado com sucesso:", JSON.stringify(response.data, null, 2));
-
-    // Tenta pegar o ID de várias formas comuns
-    const created = response.data;
-    const id = 
-      created.id || 
-      created._id || 
-      created.produto?.id || 
-      created.produto?._id || 
-      created.data?.id || 
-      created.data?._id;
-
-    if (!id) {
-      console.warn("Nenhum ID encontrado no response!");
-      Alert.alert("Aviso", "Produto cadastrado, mas ID não retornado. Edição pode falhar.");
-    } else {
-      console.log("ID encontrado:", id);
-    }
-
-    const itemParaRelatorios = {
-      ...novoItem,
-      id: id || "", // se não tiver ID, envia vazio (vai dar o alerta na edição)
-    };
-
+    console.log("Sucesso:", response.data);
     Alert.alert("Sucesso", "Produto cadastrado!");
 
-      navigation.navigate("Relatórios", { novoItem: itemParaRelatorios });
+    navigation.navigate("Relatórios", { novoItem });
 
-      setNomeProduto(null);
-      setUnidade("kg");
-      setQuantidadePorUnidade("");
-      setQuantidadeDePacotes("1");
-      setValidade("");
-      setDataReceb(getTodayDate());
-    } catch (error) {
-      console.error("Erro ao cadastrar:", error.message);
-      if (error.response) console.log("Erro do servidor:", error.response.data);
-      Alert.alert("Erro", "Falha ao cadastrar.");
-    }
-  };
+    // Limpa formulário
+    setDescricao(null);
+    setUnidade("kg");
+    setQuantidade("");
+    setPeso("1");
+    setValidade("");
+  } catch (error) {
+  console.error("ERRO AXIOS COMPLETO:", error);
+  console.error("RESPONSE DATA:", error.response?.data);
+  console.error("RESPONSE STATUS:", error.response?.status);
+  console.error("RESPONSE HEADERS:", error.response?.headers);
+
+  let msg = "Erro ao cadastrar. Tente novamente.";
+  if (error.response?.data?.message) {
+    msg = error.response.data.message;
+  } else if (error.response?.data?.erro) {
+    msg = error.response.data.erro;
+  } else if (error.message) {
+    msg = error.message;
+  }
+
+  Alert.alert("Erro", msg);
+}
+};
 
   return (
     <ScrollView>
@@ -121,8 +123,8 @@ function Cadastro() {
         <View style={styles.centralizaitem}>
           <View style={styles.Pickerborder}>
             <Picker
-              selectedValue={nomeProduto}
-              onValueChange={setNomeProduto}
+              selectedValue={descricao}
+              onValueChange={setDescricao}
               mode="dropdown"
             >
               <Picker.Item label="Nome do Produto" value={null} />
@@ -136,11 +138,11 @@ function Cadastro() {
 
           <View style={styles.rowInputs}>
             <TextInput
-              placeholder="Peso"
+              placeholder="Quantidade"
               style={styles.input}
               keyboardType="numeric"
-              value={quantidadePorUnidade}
-              onChangeText={(t) => setQuantidadePorUnidade(t.replace(/[^0-9.]/g, ""))}
+              value={quantidade}
+              onChangeText={(t) => setQuantidade(t.replace(/[^0-9.]/g, ""))}
             />
 
             <View style={styles.inputPicker}>
@@ -153,11 +155,11 @@ function Cadastro() {
             </View>
 
             <TextInput
-              placeholder="Nº de pacotes"
+              placeholder="Peso (kg)"
               style={styles.input}
               keyboardType="numeric"
-              value={quantidadeDePacotes}
-              onChangeText={(t) => setQuantidadeDePacotes(t.replace(/\D/g, ""))}
+              value={peso}
+              onChangeText={(t) => setPeso(t.replace(/[^0-9.]/g, ""))}
             />
           </View>
 
@@ -184,7 +186,6 @@ function Cadastro() {
     </ScrollView>
   );
 }
-
 export default function AppTabs() {
   return (
     <Tab.Navigator
